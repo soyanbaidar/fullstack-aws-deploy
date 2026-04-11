@@ -1,3 +1,9 @@
-.env
-terraform/.terraform
-terraform/terraform.tfstate*
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Python
+.venv/
+__pycache__/
