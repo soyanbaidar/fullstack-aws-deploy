@@ -1,0 +1,104 @@
+---
+- name: Configure server and deploy fullstack app
+  hosts: appserver
+  become: true
+
+  vars:
+    app_dir: /home/ubuntu/app
+    repo_url: https://github.com/your-username/fullstack-aws-deploy.git
+
+  tasks:
+    # ── SYSTEM UPDATE ──────────────────────────────────
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # ── INSTALL DEPENDENCIES ───────────────────────────
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - python3-pip
+        state: present
+
+    # ── DOCKER INSTALLATION ────────────────────────────
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # ── DOCKER COMPOSE INSTALLATION ────────────────────
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: "0755"
+
+    # ── CLONE REPOSITORY ───────────────────────────────
+    - name: Clone application repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: main
+        force: yes
+
+    # ── ENVIRONMENT VARIABLES ──────────────────────────
+    - name: Create .env file
+      copy:
+        dest: "{{ app_dir }}/app/.env"
+        content: |
+          POSTGRES_DB=mydb
+          POSTGRES_USER=myuser
+          POSTGRES_PASSWORD=mypassword
+          DB_HOST=db
+          DB_PORT=5432
+        owner: ubuntu
+        mode: "0600"
+
+    # ── DEPLOY APPLICATION ─────────────────────────────
+    - name: Build and start containers
+      shell: docker-compose up --build -d
+      args:
+        chdir: "{{ app_dir }}/app"
+      become_user: ubuntu
+
+    # ── VERIFY DEPLOYMENT ──────────────────────────────
+    - name: Check running containers
+      shell: docker ps
+      register: docker_output
+
+    - name: Print running containers
+      debug:
+        var: docker_output.stdout_lines
