@@ -1,3 +1,4 @@
 from django.db import models
 
-# Create your models here.
+# Django Models for API
+# Standard boilerplate restored
