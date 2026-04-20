@@ -109,6 +109,14 @@ resource "aws_security_group" "main_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Ping — for testing reachability
+  ingress {
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Allow all outbound traffic
   egress {
     from_port   = 0
